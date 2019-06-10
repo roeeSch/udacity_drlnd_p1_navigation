@@ -3,7 +3,10 @@
 
 ---
 
-In this notebook we use the Unity ML-Agents environment
+In this notebook we use the Unity ML-Agents environment to teach an DRL-agent to collect bananas:
+
+<img src='banannasTest3.gif' style='zoom:50%'>
+
 ### 1. Start the Environment
 
 We begin by importing some necessary packages.  If the code cell below returns an error, please revisit the project instructions to double-check that you have installed [Unity ML-Agents](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md) and [NumPy](http://www.numpy.org/).
