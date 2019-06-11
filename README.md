@@ -1,15 +1,21 @@
 
 # Navigation
 
----
 
-In this notebook we use the Unity ML-Agents environment to teach an DRL-agent to collect bananas:
 
-<img src='banannasTest3.gif' style='zoom:50%'>
+In this project we use the Unity ML-Agents environment to teach an DRL-agent to collect yellow bananas:
 
-### 1. Start the Environment
+<img src='images/banannasTest3.gif' style='zoom:50%'>
 
-We begin by importing some necessary packages.  If the code cell below returns an error, please revisit the project instructions to double-check that you have installed [Unity ML-Agents](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md) and [NumPy](http://www.numpy.org/).
+Running the code is done via the jupyter notebook : Navigation.ipynb.
+
+The environment is considered **solved** when the agent obtains an average score greater than 13 on 100 consecutive episodes.
+
+In the proceeding sections I explain how to run the code as well as what DRL setup was used to solve the environment.
+
+### 1. Starting the Environment
+
+Begin by importing some necessary packages.  If the code cell below returns an error, please revisit the project instructions to double-check that you have installed [Unity ML-Agents](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md) and [NumPy](http://www.numpy.org/).
 
 
 ```python
@@ -34,16 +40,7 @@ For instance, if you are using a Mac, then you downloaded `Banana.app`.  If this
 env = UnityEnvironment(file_name="Banana.app")
 ```
 
-
-```python
-from sys import platform
-if platform == 'linux':
-    bananFile = r'Banana_Linux/Banana.x86_64'
-else:
-    bananFile = r"Banana_Windows_x86\Banana.exe"
-    
-env = UnityEnvironment(file_name=bananFile)
-```
+The environment info:
 
     INFO:unityagents:
     'Academy' started successfully!
@@ -60,7 +57,6 @@ env = UnityEnvironment(file_name=bananFile)
             Number of stacked Vector Observation: 1
             Vector Action space type: discrete
             Vector Action space size (per agent): 4
-            Vector Action descriptions: , , , 
 
 
 Environments contain **_brains_** which are responsible for deciding the actions of their associated agents. Here we check for the first brain available, and set it as the default brain we will be controlling from Python.
@@ -72,23 +68,28 @@ brain_name = env.brain_names[0]
 brain = env.brains[brain_name]
 ```
 
+As can be seen above, the action space is consisted of **4** actions : forward, backward, left and right.
+
+The observation (state) consists of **37** dimensions which include mainly information about the surrounding environment of the agent + motion.
+
+The environment supports multi agent (brains), but here we will use only one.  
+
+
+
 ### 4. Define the agent and training:
 
+Initializing an agent:
+
 
 ```python
-from dqn_agent import Agent
-
 agent = Agent(state_size=37, action_size=4, seed=0, fc1_units=50, fc2_units=40)
-
 ```
 
+The the basic network interface:
 
-```python
-agent.qnetwork_local.train()
-```
+**Input :** state (37 dimension)
 
-
-
+**Output :** action-value for each action (4 dimensions)
 
     QNetwork(
       (fc1): Linear(in_features=37, out_features=50, bias=True)
@@ -96,82 +97,34 @@ agent.qnetwork_local.train()
       (fc3): Linear(in_features=40, out_features=4, bias=True)
     )
 
+An agent is comprised of 2 basic networks - one **local-network** and one **target-network** and a **replay buffer** which stores 100,000 of the last experience tuple (state, action, reward, next state, done). The local-network is used to select actions in the **act** function for every step in the episode.
+
+In the **learn** function the local-network along with the states-actions are used to obtain a **expected values**, the target-network is used to assess the next-state value which is used as the **target values**. Finally the optimization step changes the weights of the local-network to reduce the difference between the the target values and the expected values. 
+
+Once every **UPDATE_EVERY** the local-network is copied via a soft update (**TAU**) to the target network. This is done to enable a policy assessment period before updating the network.
 
 
+
+Chosen hyper parameters:
+
+```
+BUFFER_SIZE = int(1e5)  # replay buffer size
+BATCH_SIZE = 64         # minibatch size
+GAMMA = 0.99            # discount factor
+TAU = 2e-3            # for soft update of target parameters  # ROEE mult by 2
+LR = 5e-4               # learning rate 
+UPDATE_EVERY = 8
+```
+
+
+
+The main learning loop is evoked by calling:
 
 ```python
-from collections import namedtuple, deque
-
-#def dqn(n_episodes=2000, max_t=1000, eps_start=1.0, eps_end=0.01, eps_decay=0.995):
-def dqn(n_episodes=600, max_t=300, eps_start=1.0, eps_end=0.01, eps_decay=0.995):
-    """Deep Q-Learning.
-    
-    Params
-    ======
-        n_episodes (int): maximum number of training episodes
-        max_t (int): maximum number of timesteps per episode
-        eps_start (float): starting value of epsilon, for epsilon-greedy action selection
-        eps_end (float): minimum value of epsilon
-        eps_decay (float): multiplicative factor (per episode) for decreasing epsilon
-    """
-    scores = []                        # list containing scores from each episode
-    scores_window = deque(maxlen=100)  # last 100 scores
-    eps = eps_start                    # initialize epsilon
-    for i_episode in range(1, n_episodes+1):
-        env_info = env.reset(train_mode=True)[brain_name]  # Roee
-        #state = env.reset()  # Roee : added commented
-        state = env_info.vector_observations[0]
-        
-        #     action = np.random.randint(action_size)        # select an action
-        #     env_info = env.step(action)[brain_name]        # send the action to the environment
-        #     next_state = env_info.vector_observations[0]   # get the next state
-        #     reward = env_info.rewards[0]                   # get the reward
-        #     done = env_info.local_done[0]                  # see if episode has finished
-        #     score += reward                                # update the score
-        #     state = next_state      
-        
-        score = 0
-        for t in range(max_t):
-            
-            action = agent.act(state, eps)                
-            env_info = env.step(action)[brain_name]
-            
-            
-            next_state = env_info.vector_observations[0]   # get the next state
-            reward = env_info.rewards[0]                   # get the reward
-            done = env_info.local_done[0]                  # see if episode has finished
-            
-        
-            # next_state, reward, done, _ = env.step(action)
-            if agent.qnetwork_local.training:  # ROEE
-                agent.step(state, action, reward-0.01, next_state, done)  # ROEE
-
-            state = next_state
-            score += reward
-            if done:
-                break 
-        scores_window.append(score)       # save most recent score
-        scores.append(score)              # save most recent score
-        eps = max(eps_end, eps_decay*eps) # decrease epsilon
-        print('\rEpisode {}\tEps {:.2f}\tAverage Score: {:.2f}'.format(i_episode, eps, np.mean(scores_window)), end="")
-        if i_episode % 50 == 0:
-            print('\rEpisode {}\tEps {:.2f}\tAverage Score: {:.2f}'.format(i_episode, eps, np.mean(scores_window)))
-        if np.mean(scores_window)>=30.0:
-            print('\nEnvironment solved in {:d} episodes!\tAverage Score: {:.2f}'.format(i_episode-100, np.mean(scores_window)))
-            torch.save(agent.qnetwork_local.state_dict(), 'checkpoint.pth')
-            break
-    return scores
-
-scores = dqn(n_episodes=800)
-
-# plot the scores
-fig = plt.figure()
-ax = fig.add_subplot(111)
-plt.plot(np.arange(len(scores)), scores)
-plt.ylabel('Score')
-plt.xlabel('Episode #')
-plt.show()
+scores = dqn(n_episodes=800, max_t=300, eps_start=1.0, eps_end=0.01, eps_decay=0.995)
 ```
+
+Which yields the following:
 
     Episode 50	Eps 0.78	Average Score: 0.46
     Episode 100	Eps 0.61	Average Score: 1.01
@@ -192,7 +145,7 @@ plt.show()
 
 
 
-![png](output_9_1.png)
+<img src='images/output_9_1.png'>
 
 
 ## Test 100 episodes:
@@ -216,32 +169,21 @@ plt.show()
 
 
 
-![png](output_11_1.png)
+<img src='images/output_11_1.png'>
 
 
 
-```python
-# agent.qnetwork_local.eval()
-# agent.qnetwork_target.eval()
-import torch
-agent.qnetwork_local.training
-```
+# Saving testing and loading the agent 
 
-
-
-
-    False
-
-
-
-# Save test and load 
-
-### Make sure model is saved:
+### Make sure model weights are saved:
 
 
 ```python
 torch.save(agent.qnetwork_local.state_dict(), r'checkpoint600_37fc50fc40fc4.pth')
+```
+I also saved the replay buffer for continuing the learning stage where it was stopped: 
 
+```python
 import pickle
 memory = agent.memory.memory.copy()
 with open('checkpoint600_37fc50fc40fc4_memory_pickelTest1.dat','wb') as outf:
@@ -286,32 +228,15 @@ print('Number of steps = ' + str(steps))
 print('Score = ' + str(score))
 ```
 
-    Blue...
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Yellow!
-    Number of steps = 300
-    Score = 12.0
 
 
-## Load previously trained agent (memory and network weights):
+## Loading previously trained agent (memory and network weights):
 
 
 ```python
 from dqn_agent import Agent
 
 agent = Agent(state_size=37, action_size=4, seed=0, fc1_units=50, fc2_units=40)
-
 
 import pickle
 buffSize = int(1e5)
@@ -328,11 +253,18 @@ agent.qnetwork_target.load_state_dict(state_dict)
 ```
 
 
+
+Closing the environment:
+
 ```python
 env.close()
 ```
 
 
-```python
 
-```
+### Future improvements:
+
+* Implement dueling DRL setup
+* Implement Prioritized Experience Replay
+* Increase state size by adding previous states to input
+* Tweak some more with the hyper parameters.
