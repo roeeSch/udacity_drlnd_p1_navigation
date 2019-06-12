@@ -7,38 +7,42 @@ In this project we use the Unity ML-Agents environment to teach an DRL-agent to 
 
 <img src='images/banannasTest3.gif' style='zoom:50%'>
 
-Running the code is done via the jupyter notebook : Navigation.ipynb.
-
-The environment is considered **solved** when the agent obtains an average score greater than 13 on 100 consecutive episodes.
-
-In the proceeding sections I explain how to run the code as well as what DRL setup was used to solve the environment.
-
-### 1. Starting the Environment
-
-Begin by importing some necessary packages.  If the code cell below returns an error, please revisit the project instructions to double-check that you have installed [Unity ML-Agents](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md) and [NumPy](http://www.numpy.org/).
 
 
-```python
-from unityagents import UnityEnvironment
-import numpy as np
-from matplotlib import pyplot as plt
-import torch
-```
+## Project Details
 
-Next, we will start the environment!  **_Before running the code cell below_**, change the `file_name` parameter to match the location of the Unity environment that you downloaded.
+This project consist of training an agent to navigate and collect bananas in a large, square world.
 
-- **Mac**: `"path/to/Banana.app"`
-- **Windows** (x86): `"path/to/Banana_Windows_x86/Banana.exe"`
-- **Windows** (x86_64): `"path/to/Banana_Windows_x86_64/Banana.exe"`
-- **Linux** (x86): `"path/to/Banana_Linux/Banana.x86"`
-- **Linux** (x86_64): `"path/to/Banana_Linux/Banana.x86_64"`
-- **Linux** (x86, headless): `"path/to/Banana_Linux_NoVis/Banana.x86"`
-- **Linux** (x86_64, headless): `"path/to/Banana_Linux_NoVis/Banana.x86_64"`
+A reward of +1 is provided for collecting a yellow banana, and a reward of -1 is provided for collecting a blue banana. Thus, the goal of the agent is to collect as many yellow bananas as possible while avoiding blue bananas.
 
-For instance, if you are using a Mac, then you downloaded `Banana.app`.  If this file is in the same folder as the notebook, then the line below should appear as follows:
-```
-env = UnityEnvironment(file_name="Banana.app")
-```
+The state space has 37 dimensions and contains the agent's velocity, along with ray-based perception of objects around the agent's forward direction. Given this information, the agent has to learn how to best select actions. Four discrete actions are available, corresponding to:
+
+- `0` - move forward.
+- `1` - move backward.
+- `2` - turn left.
+- `3` - turn right.
+
+The task is episodic, and in order to **solve** the environment, the agent must get an average score of +13 over 100 consecutive episodes.
+
+In order to run the notebook, the following dependencies need to be met:
+
+### 1. Instructions: 
+
+1. Install python3 and pytorch
+2. Open a project with virtual env as mentioned in [DRLND GitHub repository](https://github.com/udacity/deep-reinforcement-learning#dependencies)  in the dependencies section.
+3. Installed [Unity ML-Agents](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Installation.md) and [NumPy](http://www.numpy.org/).
+4. In Navigation.ipynb change the `bananFile` parameter to match the location of the Unity environment that you downloaded.
+   - **Mac**: `"path/to/Banana.app"`
+   - **Windows** (x86): `"path/to/Banana_Windows_x86/Banana.exe"`
+   - **Windows** (x86_64): `"path/to/Banana_Windows_x86_64/Banana.exe"`
+   - **Linux** (x86): `"path/to/Banana_Linux/Banana.x86"`
+   - **Linux** (x86_64): `"path/to/Banana_Linux/Banana.x86_64"`
+   - **Linux** (x86, headless): `"path/to/Banana_Linux_NoVis/Banana.x86"`
+   - **Linux** (x86_64, headless): `"path/to/Banana_Linux_NoVis/Banana.x86_64"`
+
+
+
+### 2. The Environment
 
 The environment info:
 
@@ -58,73 +62,37 @@ The environment info:
             Vector Action space type: discrete
             Vector Action space size (per agent): 4
 
-
 Environments contain **_brains_** which are responsible for deciding the actions of their associated agents. Here we check for the first brain available, and set it as the default brain we will be controlling from Python.
-
-
-```python
-# get the default brain
-brain_name = env.brain_names[0]
-brain = env.brains[brain_name]
-```
-
-As can be seen above, the action space is consisted of **4** actions : forward, backward, left and right.
-
-The observation (state) consists of **37** dimensions which include mainly information about the surrounding environment of the agent + motion.
 
 The environment supports multi agent (brains), but here we will use only one.  
 
 
 
-### 4. Define the agent and training:
+### 3. Project main files
 
-Initializing an agent:
+**Navigation.ipynb** - Running the learning process which includes interaction between the unity environment and our agent. 
 
+**dqn_agent.py** - The implementation of our DQL agent. Consists of Agent class and ReplayBuffer class. The 
 
-```python
-agent = Agent(state_size=37, action_size=4, seed=0, fc1_units=50, fc2_units=40)
-```
+**model.py** - the network used by our agent for modeling the Q function.
 
-The the basic network interface:
+**checkpoint600_37fc50fc40fc4.pth** -  weights of the trained agent.
 
-**Input :** state (37 dimension)
+**checkpoint600_37fc50fc40fc4_memory_pickelTest1.dat** - The ReplayBuffer of our trained agent.
 
-**Output :** action-value for each action (4 dimensions)
+ 
 
-    QNetwork(
-      (fc1): Linear(in_features=37, out_features=50, bias=True)
-      (fc2): Linear(in_features=50, out_features=40, bias=True)
-      (fc3): Linear(in_features=40, out_features=4, bias=True)
-    )
-
-An agent is comprised of 2 basic networks - one **local-network** and one **target-network** and a **replay buffer** which stores 100,000 of the last experience tuple (state, action, reward, next state, done). The local-network is used to select actions in the **act** function for every step in the episode.
-
-In the **learn** function the local-network along with the states-actions are used to obtain a **expected values**, the target-network is used to assess the next-state value which is used as the **target values**. Finally the optimization step changes the weights of the local-network to reduce the difference between the the target values and the expected values. 
-
-Once every **UPDATE_EVERY** the local-network is copied via a soft update (**TAU**) to the target network. This is done to enable a policy assessment period before updating the network.
+### 3. Define the agent and training:
 
 
 
-Chosen hyper parameters:
-
-```
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
-GAMMA = 0.99            # discount factor
-TAU = 2e-3            # for soft update of target parameters  # ROEE mult by 2
-LR = 5e-4               # learning rate 
-UPDATE_EVERY = 8
-```
-
-
-
-The main learning loop is evoked by calling:
+Runing the main learning loop is evoked by calling dqn in the Navigation.ipynb:
 
 ```python
 scores = dqn(n_episodes=800, max_t=300, eps_start=1.0, eps_end=0.01, eps_decay=0.995)
 ```
 
-Which yields the following:
+The call should yield the following:
 
     Episode 50	Eps 0.78	Average Score: 0.46
     Episode 100	Eps 0.61	Average Score: 1.01
@@ -146,30 +114,6 @@ Which yields the following:
 
 
 <img src='images/output_9_1.png'>
-
-
-## Test 100 episodes:
-
-
-```python
-agent.qnetwork_local.eval()
-agent.qnetwork_target.eval()
-with torch.no_grad():
-    scores = dqn(n_episodes=100, eps_start=0.01)
-fig = plt.figure()
-ax = fig.add_subplot(111)
-plt.plot(np.arange(len(scores)), scores)
-plt.ylabel('Score')
-plt.xlabel('Episode #')
-plt.show()
-```
-
-    Episode 50	Eps 0.01	Average Score: 15.90
-    Episode 100	Eps 0.01	Average Score: 15.75
-
-
-
-<img src='images/output_11_1.png'>
 
 
 
@@ -259,12 +203,3 @@ Closing the environment:
 ```python
 env.close()
 ```
-
-
-
-### Future improvements:
-
-* Implement dueling DRL setup
-* Implement Prioritized Experience Replay
-* Increase state size by adding previous states to input
-* Tweak some more with the hyper parameters.
